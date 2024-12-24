@@ -96,156 +96,62 @@
             </tbody>
         </table>
 
-        <h3 class="mt-5">جدول الواجبات</h3>
-        <table class="table table-bordered tasks-table" id="tasks-table">
-            <thead>
-                <tr>
-                    <th>الصف</th>
-                    <th>الحصة</th>
-                    <th>المادة</th>
-                    <th>عنوان الدرس</th>
-                    <th>الواجب</th>
-                    <th>توقيع المعلم</th>
-                </tr>
-            </thead>
-            <tbody id="tasks-body">
-                <!-- سيتم تعبئة البيانات هنا -->
-            </tbody>
-        </table>
-
-        <div class="text-center mt-3">
-            <button type="button" class="btn btn-info" onclick="downloadImage()">تحميل الصور</button>
+        <h3 class="mt-5">جد ول المهام</h3>
+        <div class="tasks-table">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>المهمة</th>
+                        <th>التفاصيل</th>
+                    </tr>
+                </thead>
+                <tbody id="tasks-body">
+                    <tr>
+                        <td><input type="text" class="form-control" placeholder="اسم المهمة" required></td>
+                        <td><input type="text" class="form-control" placeholder="تفاصيل المهمة"></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        let assignments = {};
-
-        document.addEventListener("DOMContentLoaded", function() {
-            fetch('https://api.aladhan.com/v1/gToH')
-                .then(response => response.json())
-                .then(data => {
-                    const hijriDate = data.data.hijri;
-                    const today = new Date();
-                    const dayNames = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-                    const dayName = dayNames[today.getDay()];
-                    document.getElementById("date").value = `${dayName} - ${hijriDate.day} / ${hijriDate.month.number} / ${hijriDate.year}`;
-                })
-                .catch(error => {
-                    console.error('خطأ في جلب التاريخ الهجري:', error);
-                    document.getElementById("date").value = "تعذر جلب التاريخ";
-                });
-        });
-
         function saveAndUpload() {
-            const classValue = document.getElementById('class').value;
-            const sectionValue = document.getElementById('section').value;
-            const lessonRow = document.querySelector('#lesson-plan-body tr');
-            const lesson = lessonRow.querySelector('select').value;
-            const subject = lessonRow.querySelector('input[placeholder="مثال: الرياضيات"]').value;
-            const title = lessonRow.querySelector('input[placeholder="عنوان الدرس"]').value;
-            const task = lessonRow.querySelector('input[placeholder="تفاصيل الواجب"]').value;
-            const signFile = lessonRow.querySelector('input[type="file"]').files[0];
-
-            if (!assignments[classValue]) {
-                assignments[classValue] = {};
-            }
-
-            if (!assignments[classValue][lesson]) {
-                assignments[classValue][lesson] = {};
-            }
-
-            assignments[classValue][lesson] = {
-                subject: subject || "فاضية",
-                title: title || "لا يوجد",
-                task: task || "لا يوجد",
-                signFile: signFile ? signFile.name : "لا يوجد"
+            const lessonData = {
+                class: document.getElementById('class').value,
+                section: document.getElementById('section').value,
+                date: document.getElementById('date').value,
+                lessons: []
             };
 
-            // حفظ البيانات في الملف
-            const blob = new Blob([JSON.stringify(assignments)], { type: "text/plain" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `${classValue}_assignments.txt`;
-            link.click();
-
-            displayAssignments(classValue);
-        }
-
-        function loadAssignments() {
-            const selectedClass = document.getElementById('class').value;
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = '.txt';
-            fileInput.onchange = function(event) {
-                const reader = new FileReader();
-                reader.onload = function() {
-                    assignments = JSON.parse(reader.result);
-                    displayAssignments(selectedClass);
+            const rows = document.querySelectorAll('#lesson-plan-body tr');
+            rows.forEach(row => {
+                const lesson = {
+                    period: row.querySelector('select').value,
+                    subject: row.querySelector('input[type="text"]').value,
+                    title: row.querySelector('input[type="text"]:nth-of-type(2)').value,
+                    homework: row.querySelector('input[type="text"]:nth-of-type(3)').value,
+                    teacherSignature: row.querySelector('input[type="file"]').files[0] ? row.querySelector('input[type="file"]').files[0].name : ''
                 };
-                reader.readAsText(event.target.files[0]);
-            };
-            fileInput.click();
-        }
+                lessonData.lessons.push(lesson);
+            });
 
-        function displayAssignments(classValue) {
-            const tasksBody = document.getElementById('tasks-body');
-            tasksBody.innerHTML = '';  // مسح البيانات القديمة
-            const classAssignments = assignments[classValue];
-
-            if (classAssignments) {
-                Object.keys(classAssignments).forEach(lesson => {
-                    const assignment = classAssignments[lesson];
-                    const newRow = document.createElement('tr');
-                    newRow.innerHTML = `
-                        <td>${classValue}</td>
-                        <td>${lesson}</td>
-                        <td>${assignment.subject}</td>
-                        <td>${assignment.title}</td>
-                        <td>${assignment.task}</td>
-                        <td>${assignment.signFile}</td>
-                    `;
-                    tasksBody.appendChild(newRow);
-                });
-            } else {
-                const newRow = document.createElement('tr');
-                newRow.innerHTML = `
-                    <td colspan="6">لا توجد بيانات لهذا الصف</td>
-                `;
-                tasksBody.appendChild(newRow);
-            }
+            const lessonText = JSON.stringify(lessonData, null, 2);
+            const blob = new Blob([lessonText], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'lesson.txt';
+            link.click();
         }
 
         function clearAssignments() {
-            const selectedClass = document.getElementById('class').value;
-            if (assignments[selectedClass]) {
-                delete assignments[selectedClass]; // حذف البيانات الخاصة بالصف
-                displayAssignments(selectedClass); // تحديث الجدول
-                alert("تم حذف البيانات الخاصة بالصف.");
-                
-                // إعادة تحميل الملف الفارغ
-                const blob = new Blob([JSON.stringify(assignments)], { type: "text/plain" });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = `${selectedClass}_assignments.txt`;
-                link.click();
-            } else {
-                alert("لا توجد بيانات لهذا الصف.");
-            }
+            document.getElementById('lesson-plan-form').reset();
+            document.getElementById('lesson-plan-body').innerHTML = '';
+            document.getElementById('tasks-body').innerHTML = '';
         }
 
-        function downloadImage() {
-            const classValue = document.getElementById('class').value;
-            const today = new Date();
-            const dateStr = today.toLocaleDateString('ar-SA', { day: 'numeric', month: 'numeric', year: 'numeric' });
-
-            html2canvas(document.getElementById("tasks-table")).then(function(canvas) {
-                const imgData = canvas.toDataURL('image/png');
-                const link = document.createElement('a');
-                link.href = imgData;
-                link.download = `${classValue}_${dateStr}.png`;
-                link.click();
-            });
+        function loadAssignments() {
+            // هنا يمكنك إضافة الكود لتحميل الواجبات بناءً على الصف المختار
         }
     </script>
 </body>
